@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JCM — Calculadora de Costeo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #0e1513;
+    --panel:   #16211f;
+    --line:    #2a3a37;
+    --cyan:    #2dd4bf;
+    --cyanDim: #1c8478;
+    --amber:   #f0b429;
+    --red:     #ef5b5b;
+    --green:   #3ad29f;
+    --text:    #e9f1ee;
+    --mut:     #7d918d;
+    --mut2:    #56655f;
+    --mono:    ui-monospace, SFMono-Regular, Menlo, monospace;
+    --ui:      system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--ui); min-height: 100vh; padding: 22px 16px 40px; }
+  .wrap { max-width: 960px; margin: 0 auto; }
+
+  /* HEADER */
+  .header { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 2px solid var(--cyanDim); }
+  .header-sub { font-size: 11px; letter-spacing: 2px; color: var(--cyan); font-family: var(--mono); }
+  .header-title { font-size: 22px; font-weight: 700; margin-top: 2px; }
+  .header-btns { display: flex; gap: 8px; }
+
+  /* COLS */
+  .cols { display: flex; gap: 16px; flex-wrap: wrap; }
+  .col { flex: 1 1 320px; min-width: 300px; }
+
+  /* SECTION */
+  .section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .section-title { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--cyan); font-family: var(--mono); margin-bottom: 12px; }
+
+  /* FIELD */
+  .field { display: block; margin-bottom: 14px; }
+  .field-label { font-size: 11px; letter-spacing: 0.6px; text-transform: uppercase; color: var(--mut); }
+  .field-wrap { display: flex; align-items: center; margin-top: 5px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .field-prefix { padding: 0 9px; color: var(--mut2); font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+  .field-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-family: var(--mono); font-size: 15px; padding: 9px 10px 9px 0; text-align: right; width: 100%; }
+  .field-input::-webkit-inner-spin-button, .field-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  /* CHIPS */
+  .chips { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .chip { flex: 1; background: var(--bg); color: var(--mut); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; font-size: 12px; font-family: var(--mono); cursor: pointer; transition: all .12s; }
+  .chip.active { background: var(--cyanDim); color: var(--text); border-color: var(--cyan); }
+
+  /* MINI INPUTS */
+  .minis { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+  .mini { flex: 1 1 88px; min-width: 84px; }
+  .mini label { font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--mut); display: block; margin-bottom: 4px; }
+  .mini input { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 14px; padding: 7px 9px; text-align: right; outline: none; }
+  .mini input::-webkit-inner-spin-button, .mini input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  /* TOGGLE */
+  .toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; margin-top: 8px; user-select: none; }
+  .toggle-track { width: 38px; height: 22px; border-radius: 11px; background: var(--line); position: relative; transition: background .15s; flex-shrink: 0; }
+  .toggle-track.on { background: var(--cyanDim); }
+  .toggle-knob { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--mut); transition: left .15s, background .15s; }
+  .toggle-track.on .toggle-knob { left: 19px; background: var(--cyan); }
+  .toggle-label { font-size: 12px; color: var(--mut); }
+
+  /* NOTE */
+  .note { font-size: 10.5px; color: var(--mut2); margin-top: 6px; }
+  .note.amber { color: var(--amber); }
+  .note.green { color: var(--green); }
+  .note.fixed { font-size: 11px; color: var(--mut2); font-family: var(--mono); margin-top: 10px; }
+  .sublabel { font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--mut); margin-top: 10px; display: block; }
+
+  /* READOUT */
+  .readout-top { background: var(--panel); border: 1px solid var(--line); border-top: 2px solid var(--cyan); border-radius: 8px; padding: 18px; margin-bottom: 16px; }
+  .lamp-row { display: flex; align-items: center; gap: 10px; }
+  .lamp { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+  .lamp-text { font-size: 12px; letter-spacing: 0.8px; text-transform: uppercase; font-weight: 600; }
+  .price-label { font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--mut); margin-top: 14px; }
+  .price-big { font-family: var(--mono); font-size: 34px; font-weight: 700; color: var(--cyan); line-height: 1.1; margin-top: 2px; }
+  .price-sub { display: flex; gap: 18px; margin-top: 8px; flex-wrap: wrap; }
+  .price-sub span { font-size: 12px; color: var(--mut); }
+  .price-sub b { font-family: var(--mono); color: var(--text); }
+  .neg-box { margin-top: 10px; padding: 8px 10px; background: var(--bg); border-radius: 6px; border: 1px solid var(--line); font-size: 12px; }
+  .itbis-line { margin-top: 10px; font-size: 11.5px; color: var(--amber); }
+
+  /* CARD */
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+
+  /* ROW */
+  .row { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .row-k { font-size: 12px; color: var(--mut); }
+  .row-k.strong { font-size: 13px; color: var(--text); font-weight: 600; }
+  .row-v { font-family: var(--mono); font-size: 13px; color: var(--mut); }
+  .row-v.strong { font-size: 14px; color: var(--text); font-weight: 700; }
+
+  /* DGII PANEL */
+  .dgii-panel { background: var(--panel); border: 1px solid var(--amber); border-radius: 8px; padding: 16px; margin-top: 16px; display: none; }
+  .dgii-panel.visible { display: block; }
+  .dgii-title { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--amber); font-family: var(--mono); margin-bottom: 12px; }
+  .dgii-cols { display: flex; gap: 24px; flex-wrap: wrap; }
+  .dgii-col { flex: 1 1 200px; }
+  .dgii-info { font-size: 11px; color: var(--mut); line-height: 1.7; }
+  .dgii-info b { color: var(--text); font-family: var(--mono); }
+  .dgii-dates { margin-top: 8px; color: var(--mut2); font-size: 10.5px; }
+
+  /* FOOTER */
+  .footer { margin-top: 18px; font-size: 11px; color: var(--mut2); font-family: var(--mono); text-align: center; }
+
+  /* BUTTONS */
+  .btn { border-radius: 6px; padding: 8px 12px; font-size: 12px; font-weight: 600; font-family: var(--ui); cursor: pointer; border: 1px solid var(--line); }
+  .btn-primary { background: var(--cyan); color: var(--bg); border-color: var(--cyan); }
+  .btn-secondary { background: transparent; color: var(--mut); }
+
+  /* HIDDEN */
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="header-sub">JCM · SISTEMA VBP</div>
+      <div class="header-title">Calculadora de Costeo</div>
+    </div>
+    <div class="header-btns">
+      <button class="btn btn-primary" onclick="loadPisano()">Cargar caso PISANO</button>
+      <button class="btn btn-secondary" onclick="clearFields()">Limpiar</button>
+    </div>
+  </div>
+
+  <div class="cols">
+    <!-- ── INPUTS ── -->
+    <div class="col">
+
+      <div class="section">
+        <div class="section-title">Costos del proyecto</div>
+
+        <label class="field">
+          <span class="field-label">Materiales (precio con ITBIS incluido — lo que pagas en caja)</span>
+          <div class="field-wrap">
+            <span class="field-prefix">RD$</span>
+            <input class="field-input" type="number" id="mat" oninput="calc()" placeholder="0">
+          </div>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Mano de obra / subcontrata</span>
+          <div class="field-wrap">
+            <span class="field-prefix">RD$</span>
+            <input class="field-input" type="number" id="sub" oninput="calc()" placeholder="0">
+          </div>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Viáticos / combustible</span>
+          <div class="field-wrap">
+            <span class="field-prefix">RD$</span>
+            <input class="field-input" type="number" id="via" oninput="calc()" placeholder="0">
+          </div>
+        </label>
+
+        <span class="sublabel">¿Quién ejecuta el trabajo?</span>
+        <div class="chips" id="chips-ejecutor">
+          <button class="chip" data-val="yo" onclick="setEjecutor('yo')">Yo mismo</button>
+          <button class="chip active" data-val="formal" onclick="setEjecutor('formal')">Subcontratista formal</button>
+          <button class="chip" data-val="informal" onclick="setEjecutor('informal')">Subcontratista informal</button>
+        </div>
+        <div class="note green hidden" id="note-yo">✓ Tu mano de obra no es costo — va directo a ganancia.</div>
+
+        <div class="hidden" id="tipo-sub-wrap">
+          <span class="sublabel" style="margin-top:10px">Tipo de servicio (retención ISR)</span>
+          <div class="chips" id="chips-tipo">
+            <button class="chip active" data-val="tecnico" onclick="setTipoSub('tecnico')">Técnico · 2%</button>
+            <button class="chip" data-val="profesional" onclick="setTipoSub('profesional')">Profesional · 10%</button>
+          </div>
+          <div class="note amber" style="margin-top:6px">⚠ Informal: el ITBIS (18%) entra como costo real tuyo. Ver panel DGII abajo.</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Parámetros VBP</div>
+
+        <span class="sublabel">Complejidad → colchón de imprevistos</span>
+        <div class="chips" id="chips-colchon">
+          <button class="chip" data-val="5" onclick="setColchon('5')">Baja · 5%</button>
+          <button class="chip active" data-val="10" onclick="setColchon('10')">Media · 10%</button>
+          <button class="chip" data-val="15" onclick="setColchon('15')">Alta · 15%</button>
+        </div>
+
+        <div class="minis" style="margin-top:14px">
+          <div class="mini"><label>Margen objetivo %</label><input type="number" id="margen" value="22" oninput="calc()"></div>
+          <div class="mini"><label>Descuento máx. %</label><input type="number" id="neg" value="10" oninput="calc()"></div>
+          <div class="mini"><label>Margen mínimo %</label><input type="number" id="minM" value="15" oninput="calc()"></div>
+          <div class="mini"><label>Colchón %</label><input type="number" id="colchon" value="10" oninput="calc()"></div>
+        </div>
+        <div class="note fixed">ISR 27% · Split 50/50 — fijos (ley + política), no editables</div>
+
+        <span class="sublabel" style="margin-top:14px">Redondear techo hacia arriba</span>
+        <div class="chips" id="chips-redondeo">
+          <button class="chip" data-val="0" onclick="setRedondeo(0)">No</button>
+          <button class="chip" data-val="500" onclick="setRedondeo(500)">500</button>
+          <button class="chip active" data-val="1000" onclick="setRedondeo(1000)">1,000</button>
+          <button class="chip" data-val="5000" onclick="setRedondeo(5000)">5,000</button>
+        </div>
+
+        <div class="toggle" onclick="toggleExento()" style="margin-top:14px">
+          <div class="toggle-track" id="track-exento"><div class="toggle-knob"></div></div>
+          <span class="toggle-label">Cliente exento (Zona Franca · Ley 8-90) — sin ITBIS a facturar</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Vendedor externo (comisión)</div>
+        <div class="toggle" onclick="toggleVendedor()">
+          <div class="toggle-track" id="track-vendedor"><div class="toggle-knob"></div></div>
+          <span class="toggle-label">Hubo un vendedor que trajo el proyecto</span>
+        </div>
+        <div class="hidden" id="vendedor-wrap" style="margin-top:12px">
+          <span class="sublabel">Rol → comisión (máx. 8%)</span>
+          <div class="chips" id="chips-comision">
+            <button class="chip" data-val="4" onclick="setComision(4)">Referidor · 4%</button>
+            <button class="chip active" data-val="5" onclick="setComision(5)">Gestor · 6%</button>
+            <button class="chip" data-val="8" onclick="setComision(8)">Socio cierre · 8%</button>
+          </div>
+          <div class="minis" style="margin-top:10px">
+            <div class="mini"><label>Comisión %</label><input type="number" id="comision" value="5" oninput="calc()"></div>
+          </div>
+          <div class="note" style="margin-top:8px">Va dentro del precio (la paga el cliente). Tu margen no se toca.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── READOUT ── -->
+    <div class="col">
+      <div class="readout-top">
+        <div class="lamp-row">
+          <div class="lamp" id="lamp" style="background:var(--mut2)"></div>
+          <span class="lamp-text" id="lamp-text" style="color:var(--mut2)">ESPERANDO DATOS</span>
+        </div>
+        <div class="price-label">Precio a cotizar</div>
+        <div class="price-big" id="precio-techo">RD$ —</div>
+        <div class="price-sub">
+          <span>Piso real: <b id="precio-piso">—</b></span>
+          <span id="neg-label">Si das −<span id="neg-pct">10</span>%: <b id="precio-neg" style="color:var(--text)">—</b></span>
+        </div>
+        <div class="neg-box hidden" id="neg-box">
+          <span style="color:var(--mut)">Con −<span id="neg-pct2">10</span>% → tu bolsillo: </span>
+          <b id="bolsillo-neg">—</b>
+          <span style="color:var(--mut)"> · margen neto: </span>
+          <b id="margen-neg">—</b>
+        </div>
+        <div class="itbis-line hidden" id="itbis-line"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Costo total real</div>
+        <div class="row"><span class="row-k">Materiales (con ITBIS)</span><span class="row-v" id="r-mat">—</span></div>
+        <div class="row"><span class="row-k">Subcontrata</span><span class="row-v" id="r-sub">—</span></div>
+        <div class="row" id="row-itsub"><span class="row-k">ITBIS subcontrata (costo)</span><span class="row-v" id="r-itsub">—</span></div>
+        <div class="row"><span class="row-k">Viáticos</span><span class="row-v" id="r-via">—</span></div>
+        <div class="row"><span class="row-k" id="r-colchon-label">Colchón (10%)</span><span class="row-v" id="r-colchon">—</span></div>
+        <div class="row"><span class="row-k strong">COSTO TOTAL</span><span class="row-v strong" id="r-costo">—</span></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Análisis de ganancia (al techo)</div>
+        <div class="row"><span class="row-k">Precio al cliente</span><span class="row-v" id="r-techo2">—</span></div>
+        <div class="row"><span class="row-k">− Costo total</span><span class="row-v" id="r-costo2">—</span></div>
+        <div class="row hidden" id="row-com"><span class="row-k" id="r-com-label">− Comisión vendedor</span><span class="row-v" style="color:var(--amber)" id="r-com">—</span></div>
+        <div class="row"><span class="row-k strong">Ganancia bruta</span><span class="row-v strong" id="r-bruta">—</span></div>
+        <div class="row"><span class="row-k">− ISR 27%</span><span class="row-v" id="r-isr">—</span></div>
+        <div class="row"><span class="row-k strong">Ganancia neta</span><span class="row-v strong" style="color:var(--green)" id="r-neta">—</span></div>
+        <div class="row"><span class="row-k">Tu bolsillo (50%)</span><span class="row-v" style="color:var(--cyan)" id="r-bolsillo">—</span></div>
+        <div class="row hidden" id="row-mdo"><span class="row-k">+ Tu mano de obra (100%)</span><span class="row-v" style="color:var(--cyan)" id="r-mdo">—</span></div>
+        <div class="row"><span class="row-k strong">Tu bolsillo TOTAL</span><span class="row-v strong" style="color:var(--cyan)" id="r-bolsillo-total">—</span></div>
+        <div class="row"><span class="row-k">Fondo empresa (50%)</span><span class="row-v" id="r-empresa">—</span></div>
+        <div class="row"><span class="row-k strong">Margen neto real</span><span class="row-v strong" id="r-margen">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL DGII -->
+  <div class="dgii-panel" id="dgii-panel">
+    <div class="dgii-title">Para tus reportes DGII — no afecta el precio</div>
+    <div class="dgii-cols">
+      <div class="dgii-col">
+        <div class="row"><span class="row-k">Lo que acuerdas pagar</span><span class="row-v" id="dg-acuerdo">—</span></div>
+        <div class="row"><span class="row-k">− Retención ITBIS (100%)</span><span class="row-v" style="color:var(--amber)" id="dg-itbis">—</span></div>
+        <div class="row"><span class="row-k" id="dg-isr-label">− Retención ISR (2%)</span><span class="row-v" style="color:var(--amber)" id="dg-isr">—</span></div>
+        <div class="row"><span class="row-k strong">Neto que recibe el subcontratista</span><span class="row-v strong" style="color:var(--cyan)" id="dg-neto">—</span></div>
+      </div>
+      <div class="dgii-col">
+        <div class="dgii-info">
+          <div>Remites a DGII (IT-1): <b id="dg-it1">—</b></div>
+          <div>Remites a DGII (IR-17): <b id="dg-ir17">—</b></div>
+          <div class="dgii-dates">IT-1 → antes del día 20 del mes siguiente.<br>IR-17 → antes del día 10 del mes siguiente.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Motor verificado vs. caso PISANO · el margen lo decides tú; la calculadora evita que cotices bajo el piso.</div>
+</div>
+
+<script>
+// ── Estado ──────────────────────────────────────────────────────────────
+const ISR_EMP = 0.27;
+const SPLIT   = 0.50;
+
+let ejecutor  = "formal";
+let tipoSub   = "tecnico";
+let colchonV  = 10;
+let redondeoV = 1000;
+let exentoV   = false;
+let vendedorV = false;
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+const g = id => document.getElementById(id);
+const n = v => parseFloat(v) || 0;
+
+const fmt = v => "RD$ " + (isFinite(v) ? v : 0).toLocaleString("es-DO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pct = v => (isFinite(v) ? v : 0).toLocaleString("es-DO", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+
+function setColor(id, color) { g(id).style.color = color; }
+function show(id) { g(id).classList.remove("hidden"); }
+function hide(id) { g(id).classList.add("hidden"); }
+function setChip(groupId, val) {
+  g(groupId).querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.val == val));
+}
+
+// ── Setters ──────────────────────────────────────────────────────────────
+function setEjecutor(v) {
+  ejecutor = v;
+  setChip("chips-ejecutor", v);
+  v === "yo"       ? show("note-yo")       : hide("note-yo");
+  v === "informal" ? show("tipo-sub-wrap") : hide("tipo-sub-wrap");
+  calc();
+}
+function setTipoSub(v) {
+  tipoSub = v;
+  setChip("chips-tipo", v);
+  calc();
+}
+function setColchon(v) {
+  colchonV = parseFloat(v);
+  g("colchon").value = v;
+  setChip("chips-colchon", v);
+  calc();
+}
+function setRedondeo(v) {
+  redondeoV = v;
+  setChip("chips-redondeo", v);
+  calc();
+}
+function toggleExento() {
+  exentoV = !exentoV;
+  g("track-exento").classList.toggle("on", exentoV);
+  calc();
+}
+function toggleVendedor() {
+  vendedorV = !vendedorV;
+  g("track-vendedor").classList.toggle("on", vendedorV);
+  vendedorV ? show("vendedor-wrap") : hide("vendedor-wrap");
+  calc();
+}
+function setComision(v) {
+  g("comision").value = v;
+  setChip("chips-comision", v);
+  calc();
+}
+
+// ── Motor principal ───────────────────────────────────────────────────────
+function calc() {
+  const matN    = n(g("mat").value);
+  const matNeto = matN / 1.18;
+  const subN    = n(g("sub").value);
+  const viaN    = n(g("via").value);
+  const colchon = n(g("colchon").value);
+  const margen  = n(g("margen").value);
+  const neg     = n(g("neg").value);
+  const minM    = n(g("minM").value);
+  const comPct  = vendedorV ? n(g("comision").value) : 0;
+
+  const itSub    = ejecutor === "informal" ? subN * 0.18 : 0;
+  // Para el precio: la mano de obra siempre cuenta (sea quien sea que ejecute)
+  // Para el costo: si es yo, no es gasto externo — va directo a ganancia
+  const costoExterno = ejecutor === "yo" ? 0 : subN + itSub;
+  const colN     = matNeto * (colchon / 100);
+  const costo    = matN + costoExterno + viaN + colN;
+  // Base del precio incluye siempre la mano de obra
+  const baseprecio = matN + subN + itSub + viaN + colN;
+
+  const denom   = 1 - margen / 100 - comPct / 100;
+  const piso    = denom > 0 ? baseprecio / denom : 0;
+  const negPct  = neg / 100;
+  const pisoD   = negPct < 1 ? (1 - negPct) : 1;
+  let   techo   = piso / pisoD;
+  if (redondeoV > 0) techo = Math.ceil(techo / redondeoV) * redondeoV;
+
+  const trasNeg   = techo * (1 - negPct);
+  const comTecho  = techo * (comPct / 100);
+  const bruta     = techo - costo - comTecho;
+  const isrM      = bruta * ISR_EMP;
+  const neta      = bruta - isrM;
+  const bolsillo  = neta * SPLIT;
+  const empresa   = neta - bolsillo;
+  const margenNeto = techo > 0 ? (neta / techo) * 100 : 0;
+
+  const comNeg    = trasNeg * (comPct / 100);
+  const brutaNeg  = trasNeg - costo - comNeg;
+  const netaNeg   = brutaNeg * (1 - ISR_EMP);
+  const margenNeg = trasNeg > 0 ? (netaNeg / trasNeg) * 100 : 0;
+  const bolsilloNeg = netaNeg * SPLIT;
+
+  const itbisOut  = exentoV ? 0 : techo * 0.18;
+
+  const isrRetPct = tipoSub === "tecnico" ? 0.02 : 0.10;
+  const itbisRet  = ejecutor === "informal" ? subN * 0.18 : 0;
+  const isrRet    = ejecutor === "informal" ? subN * isrRetPct : 0;
+  const netoSub   = subN - isrRet;
+
+  // ── Lámpara ──
+  const noData = matN === 0 && subN === 0;
+  let lamp, lampColor;
+  if (noData) {
+    lamp = "ESPERANDO DATOS"; lampColor = "var(--mut2)";
+  } else if (margenNeg < minM) {
+    lamp = "NO VIABLE — si negocias ese descuento caes bajo el mínimo"; lampColor = "var(--red)";
+  } else if (margenNeg < minM + 5) {
+    lamp = "VIABLE — AJUSTADO con descuento aplicado"; lampColor = "var(--amber)";
+  } else {
+    lamp = "VIABLE"; lampColor = "var(--green)";
+  }
+  g("lamp").style.background = lampColor;
+  g("lamp").style.boxShadow  = `0 0 10px ${lampColor}`;
+  g("lamp-text").textContent  = lamp;
+  g("lamp-text").style.color  = lampColor;
+
+  // ── Precio techo ──
+  g("precio-techo").textContent = noData ? "RD$ —" : fmt(techo);
+  g("precio-piso").textContent  = noData ? "—"     : fmt(piso);
+  g("neg-pct").textContent  = neg;
+  g("neg-pct2").textContent = neg;
+  g("precio-neg").textContent = noData ? "—" : fmt(trasNeg);
+  g("precio-neg").style.color = trasNeg >= piso ? "var(--green)" : "var(--red)";
+
+  if (!noData && neg > 0) {
+    show("neg-box");
+    g("bolsillo-neg").textContent = fmt(bolsilloNeg);
+    g("bolsillo-neg").style.color = margenNeg >= minM ? "var(--green)" : "var(--red)";
+    g("margen-neg").textContent   = pct(margenNeg);
+    g("margen-neg").style.color   = margenNeg >= minM ? "var(--green)" : "var(--red)";
+  } else { hide("neg-box"); }
+
+  if (!exentoV && !noData) {
+    show("itbis-line");
+    g("itbis-line").textContent = `+ ITBIS a facturar (18%): ${fmt(itbisOut)} · Total c/ITBIS: ${fmt(techo + itbisOut)}`;
+  } else { hide("itbis-line"); }
+
+  // ── Costo breakdown ──
+  g("r-mat").textContent = fmt(matN);
+  g("r-sub").textContent = fmt(subN);
+  if (ejecutor === "informal" && itSub > 0) { show("row-itsub"); g("r-itsub").textContent = fmt(itSub); }
+  else hide("row-itsub");
+  if (ejecutor === "yo") { g("r-sub").textContent = "—  (va a ganancia)"; }
+  g("r-via").textContent = fmt(viaN);
+  g("r-colchon-label").textContent = `Colchón (${colchon}% s/ materiales netos)`;
+  g("r-colchon").textContent = fmt(colN);
+  g("r-costo").textContent = fmt(costo);
+
+  // ── Ganancia ──
+  g("r-techo2").textContent  = fmt(techo);
+  g("r-costo2").textContent  = fmt(costo);
+  if (comPct > 0) {
+    show("row-com");
+    g("r-com-label").textContent = `− Comisión vendedor (${comPct}%)`;
+    g("r-com").textContent = fmt(comTecho);
+  } else { hide("row-com"); }
+  g("r-bruta").textContent   = fmt(bruta);
+  g("r-isr").textContent     = fmt(isrM);
+  g("r-neta").textContent    = fmt(neta);
+  g("r-bolsillo").textContent = fmt(bolsillo);
+  const bolsilloTotal = bolsillo + (ejecutor === "yo" ? subN : 0);
+  if (ejecutor === "yo" && subN > 0) { show("row-mdo"); g("r-mdo").textContent = fmt(subN); }
+  else hide("row-mdo");
+  g("r-bolsillo-total").textContent = fmt(bolsilloTotal);
+  g("r-empresa").textContent = fmt(empresa);
+  g("r-margen").textContent  = pct(margenNeto);
+  g("r-margen").style.color  = margenNeto >= minM ? "var(--green)" : "var(--red)";
+
+  // ── Panel DGII ──
+  if (ejecutor === "informal" && subN > 0) {
+    g("dgii-panel").classList.add("visible");
+    g("dg-acuerdo").textContent  = fmt(subN);
+    g("dg-itbis").textContent    = fmt(itbisRet);
+    g("dg-isr-label").textContent = `− Retención ISR (${isrRetPct * 100}%)`;
+    g("dg-isr").textContent      = fmt(isrRet);
+    g("dg-neto").textContent     = fmt(netoSub);
+    g("dg-it1").textContent      = fmt(itbisRet);
+    g("dg-ir17").textContent     = fmt(isrRet);
+  } else {
+    g("dgii-panel").classList.remove("visible");
+  }
+}
+
+// ── Presets ───────────────────────────────────────────────────────────────
+function loadPisano() {
+  g("mat").value = "112032.55";
+  g("sub").value = "18000";
+  g("via").value = "2500";
+  setEjecutor("informal");
+  setTipoSub("tecnico");
+  setColchon("10");
+  g("margen").value = "22";
+  g("neg").value = "10";
+  g("minM").value = "15";
+  setRedondeo(1000);
+  if (!exentoV) toggleExento();
+  if (vendedorV) toggleVendedor();
+  calc();
+}
+
+function clearFields() {
+  g("mat").value = "";
+  g("sub").value = "";
+  g("via").value = "";
+  calc();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+calc();
+</script>
+</body>
+</html>
